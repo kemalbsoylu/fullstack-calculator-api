@@ -1,0 +1,10 @@
+[project]
+name = "fullstack-calculator-api"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.139.1",
+    "pydantic>=2.13.4",
+    "pytest>=9.1.1",
+    "uvicorn>=0.51.0",
+]
