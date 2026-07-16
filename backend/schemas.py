@@ -1,5 +1,6 @@
 from enum import Enum
 from pydantic import BaseModel
+from decimal import Decimal
 
 class Operation(str, Enum):
     add = "add"
@@ -9,8 +10,8 @@ class Operation(str, Enum):
 
 class CalculateRequest(BaseModel):
     operation: Operation
-    a: float
-    b: float
+    a: Decimal
+    b: Decimal
 
 class CalculateResponse(BaseModel):
-    result: float
+    result: Decimal
