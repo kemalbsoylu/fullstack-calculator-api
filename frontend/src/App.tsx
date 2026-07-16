@@ -5,12 +5,12 @@ type Operation = 'add' | 'subtract' | 'multiply' | 'divide';
 
 interface CalculateRequest {
   operation: Operation;
-  a: number;
-  b: number;
+  a: string;
+  b: string;
 }
 
 interface CalculateResponse {
-  result: number;
+  result: string;
 }
 
 interface ErrorResponse {
@@ -19,23 +19,72 @@ interface ErrorResponse {
 
 function App() {
   const [display, setDisplay] = useState<string>('0');
-  const [firstOperand, setFirstOperand] = useState<number | null>(null);
+  const [historyDisplay, setHistoryDisplay] = useState<string>('');
+  const [firstOperand, setFirstOperand] = useState<string | null>(null);
   const [operator, setOperator] = useState<Operation | null>(null);
   const [waitingForNewValue, setWaitingForNewValue] = useState<boolean>(false);
+  const [isCalculated, setIsCalculated] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
+  const getOperatorSymbol = (op: Operation) => {
+    switch (op) {
+      case 'add': return '+';
+      case 'subtract': return '−';
+      case 'multiply': return '×';
+      case 'divide': return '÷';
+      default: return '';
+    }
+  };
+
   const clear = () => {
     setDisplay('0');
+    setHistoryDisplay('');
     setFirstOperand(null);
     setOperator(null);
     setWaitingForNewValue(false);
+    setIsCalculated(false);
     setError(null);
+  };
+
+  const deleteLast = () => {
+    // Prevent deleting digits from a finalized result
+    if (waitingForNewValue || isCalculated) return;
+
+    if (display.length > 1 && display !== '-0') {
+      setDisplay(display.slice(0, -1));
+    } else {
+      setDisplay('0');
+    }
+  };
+
+  const toggleSign = () => {
+    if (display === '0') return;
+
+    const newDisplay = display.startsWith('-') ? display.slice(1) : '-' + display;
+    setDisplay(newDisplay);
+
+    // If toggled after a calculation, treat it as a new input rather than chaining
+    if (isCalculated) {
+      setIsCalculated(false);
+      setHistoryDisplay('');
+      setFirstOperand(null);
+      setOperator(null);
+    }
   };
 
   const inputDigit = (digit: string) => {
     setError(null);
-    if (waitingForNewValue) {
+
+    if (isCalculated) {
+      // Start fresh if a number is typed immediately after a result
+      setDisplay(digit);
+      setFirstOperand(null);
+      setOperator(null);
+      setHistoryDisplay('');
+      setIsCalculated(false);
+      setWaitingForNewValue(false);
+    } else if (waitingForNewValue) {
       setDisplay(digit);
       setWaitingForNewValue(false);
     } else {
@@ -45,11 +94,23 @@ function App() {
 
   const inputDecimal = () => {
     setError(null);
+
+    if (isCalculated) {
+      setDisplay('0.');
+      setFirstOperand(null);
+      setOperator(null);
+      setHistoryDisplay('');
+      setIsCalculated(false);
+      setWaitingForNewValue(false);
+      return;
+    }
+
     if (waitingForNewValue) {
       setDisplay('0.');
       setWaitingForNewValue(false);
       return;
     }
+
     if (!display.includes('.')) {
       setDisplay(display + '.');
     }
@@ -57,30 +118,45 @@ function App() {
 
   const handleOperator = (nextOperator: Operation) => {
     setError(null);
-    const inputValue = parseFloat(display);
+
+    if (operator && waitingForNewValue && !isCalculated) {
+      setOperator(nextOperator);
+      setHistoryDisplay(`${firstOperand} ${getOperatorSymbol(nextOperator)}`);
+      return;
+    }
+
+    if (isCalculated) {
+      // Chain the calculation using the previous result
+      setIsCalculated(false);
+      setOperator(nextOperator);
+      setHistoryDisplay(`${display} ${getOperatorSymbol(nextOperator)}`);
+      setWaitingForNewValue(true);
+      return;
+    }
 
     if (firstOperand === null) {
-      setFirstOperand(inputValue);
-    } else if (operator && !waitingForNewValue) {
-      // If the user hasn't typed a new number yet, they're just changing the operator.
-      // If they have typed a new number, ideally we calculate the intermediate result here.
-      // But keeping it simple for the requirements.
+      setFirstOperand(display);
     }
-    
+
     setOperator(nextOperator);
+    setHistoryDisplay(`${display} ${getOperatorSymbol(nextOperator)}`);
     setWaitingForNewValue(true);
   };
 
   const calculate = async () => {
-    if (firstOperand === null || operator === null) {
+    if (firstOperand === null || operator === null || waitingForNewValue) {
       return;
     }
 
-    const b = parseFloat(display);
+    if (operator === 'divide' && parseFloat(display) === 0) {
+      setError("Cannot divide by zero");
+      return;
+    }
+
     const payload: CalculateRequest = {
       operation: operator,
       a: firstOperand,
-      b: b
+      b: display
     };
 
     setIsLoading(true);
@@ -101,10 +177,13 @@ function App() {
       }
 
       const data: CalculateResponse = await response.json();
+
+      setHistoryDisplay(`${firstOperand} ${getOperatorSymbol(operator)} ${display} =`);
       setDisplay(String(data.result));
-      setFirstOperand(data.result);
+      setFirstOperand(String(data.result));
       setOperator(null);
       setWaitingForNewValue(true);
+      setIsCalculated(true);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -117,31 +196,36 @@ function App() {
       <div className="calculator">
         <div className="display">
           <div className="error-screen">{error && <span className="error-text">{error}</span>}</div>
+          <div className="history-display" style={{ fontSize: '0.8em', color: '#888', minHeight: '1.2em', textAlign: 'right' }}>
+            {historyDisplay}
+          </div>
           <div className="main-display">{display}</div>
         </div>
 
-        <div className="keypad">
-          <button className="btn clear span-2-col" onClick={clear}>C</button>
+<div className="keypad">
+          <button className="btn clear" onClick={clear}>C</button>
+          <button className="btn" onClick={toggleSign}>±</button>
+          <button className="btn delete" onClick={deleteLast}>DEL</button>
           <button className="btn operator" onClick={() => handleOperator('divide')}>÷</button>
-          <button className="btn operator" onClick={() => handleOperator('multiply')}>×</button>
-          
+
           <button className="btn" onClick={() => inputDigit('7')}>7</button>
           <button className="btn" onClick={() => inputDigit('8')}>8</button>
           <button className="btn" onClick={() => inputDigit('9')}>9</button>
-          <button className="btn operator" onClick={() => handleOperator('subtract')}>−</button>
-          
+          <button className="btn operator" onClick={() => handleOperator('multiply')}>×</button>
+
           <button className="btn" onClick={() => inputDigit('4')}>4</button>
           <button className="btn" onClick={() => inputDigit('5')}>5</button>
           <button className="btn" onClick={() => inputDigit('6')}>6</button>
-          <button className="btn operator" onClick={() => handleOperator('add')}>+</button>
+          <button className="btn operator" onClick={() => handleOperator('subtract')}>−</button>
 
           <button className="btn" onClick={() => inputDigit('1')}>1</button>
           <button className="btn" onClick={() => inputDigit('2')}>2</button>
           <button className="btn" onClick={() => inputDigit('3')}>3</button>
-          <button className="btn equals span-2-row" onClick={calculate} disabled={isLoading}>=</button>
+          <button className="btn operator" onClick={() => handleOperator('add')}>+</button>
 
           <button className="btn span-2-col" onClick={() => inputDigit('0')}>0</button>
           <button className="btn" onClick={inputDecimal}>.</button>
+          <button className="btn equals" onClick={calculate} disabled={isLoading}>=</button>
         </div>
       </div>
     </div>
