@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import './App.css';
 
-type Operation = 'add' | 'subtract' | 'multiply' | 'divide';
+type Operation = 'add' | 'subtract' | 'multiply' | 'divide' | 'power';
+type UnaryOperation = 'sqrt' | 'percentage';
 
 interface CalculateRequest {
-  operation: Operation;
+  operation: Operation | UnaryOperation;
   a: string;
   b: string;
 }
@@ -33,6 +34,7 @@ function App() {
       case 'subtract': return '−';
       case 'multiply': return '×';
       case 'divide': return '÷';
+      case 'power': return '^';
       default: return '';
     }
   };
@@ -48,11 +50,21 @@ function App() {
   };
 
   const deleteLast = () => {
-    // Prevent deleting digits from a finalized result
-    if (waitingForNewValue || isCalculated) return;
+    if (waitingForNewValue) return;
 
-    if (display.length > 1 && display !== '-0') {
-      setDisplay(display.slice(0, -1));
+    if (isCalculated) {
+      setIsCalculated(false);
+      setHistoryDisplay('');
+      setFirstOperand(null);
+      setOperator(null);
+    }
+
+    if (display.length > 1) {
+      if (display.length === 2 && display.startsWith('-')) {
+        setDisplay('0');
+      } else {
+        setDisplay(display.slice(0, -1));
+      }
     } else {
       setDisplay('0');
     }
@@ -143,6 +155,63 @@ function App() {
     setWaitingForNewValue(true);
   };
 
+const calculateImmediate = async (op: UnaryOperation) => {
+    // Guard: Prevent negative square root network spam
+    if (op === 'sqrt' && parseFloat(display) < 0) {
+      setError("Cannot calculate square root of a negative number");
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    // b is required by schema, but backend math ignores it for unary operations
+    const payload: CalculateRequest = {
+      operation: op,
+      a: display,
+      b: "0"
+    };
+
+    try {
+      const response = await fetch('http://localhost:8000/api/calculate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        let errorMessage = 'Calculation failed';
+        try {
+          const errorData: ErrorResponse = await response.json();
+          errorMessage = errorData.detail || errorMessage;
+        } catch {
+          errorMessage = `Server Error: ${response.status} ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
+      }
+
+      const data: CalculateResponse = await response.json();
+
+      if (op === 'sqrt') {
+         setHistoryDisplay(`√${display} =`);
+      } else {
+         setHistoryDisplay(`${display}% =`);
+      }
+
+      setDisplay(String(data.result));
+      setFirstOperand(String(data.result));
+      setOperator(null);
+      setWaitingForNewValue(true);
+      setIsCalculated(true);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const calculate = async () => {
     if (firstOperand === null || operator === null || waitingForNewValue) {
       return;
@@ -172,8 +241,14 @@ function App() {
       });
 
       if (!response.ok) {
-        const errorData: ErrorResponse = await response.json();
-        throw new Error(errorData.detail || 'Calculation failed');
+        let errorMessage = 'Calculation failed';
+        try {
+          const errorData: ErrorResponse = await response.json();
+          errorMessage = errorData.detail || errorMessage;
+        } catch {
+          errorMessage = `Server Error: ${response.status} ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
       }
 
       const data: CalculateResponse = await response.json();
@@ -202,30 +277,39 @@ function App() {
           <div className="main-display">{display}</div>
         </div>
 
-<div className="keypad">
+        <div className="keypad">
+          {/* Row 1: Controls & Modifiers */}
           <button className="btn clear" onClick={clear}>C</button>
-          <button className="btn" onClick={toggleSign}>±</button>
           <button className="btn delete" onClick={deleteLast}>DEL</button>
+          <button className="btn" onClick={toggleSign}>±</button>
           <button className="btn operator" onClick={() => handleOperator('divide')}>÷</button>
 
+          {/* Row 2: Advanced Math */}
+          <button className="btn operator" onClick={() => handleOperator('power')}>^</button>
+          <button className="btn" onClick={() => calculateImmediate('sqrt')}>√</button>
+          <button className="btn" onClick={() => calculateImmediate('percentage')}>%</button>
+          <button className="btn operator" onClick={() => handleOperator('multiply')}>×</button>
+
+          {/* Row 3: Numbers */}
           <button className="btn" onClick={() => inputDigit('7')}>7</button>
           <button className="btn" onClick={() => inputDigit('8')}>8</button>
           <button className="btn" onClick={() => inputDigit('9')}>9</button>
-          <button className="btn operator" onClick={() => handleOperator('multiply')}>×</button>
+          <button className="btn operator" onClick={() => handleOperator('subtract')}>−</button>
 
+          {/* Row 4: Numbers */}
           <button className="btn" onClick={() => inputDigit('4')}>4</button>
           <button className="btn" onClick={() => inputDigit('5')}>5</button>
           <button className="btn" onClick={() => inputDigit('6')}>6</button>
-          <button className="btn operator" onClick={() => handleOperator('subtract')}>−</button>
+          <button className="btn operator" onClick={() => handleOperator('add')}>+</button>
 
+          {/* Row 5 & 6: Numbers and Equals */}
           <button className="btn" onClick={() => inputDigit('1')}>1</button>
           <button className="btn" onClick={() => inputDigit('2')}>2</button>
           <button className="btn" onClick={() => inputDigit('3')}>3</button>
-          <button className="btn operator" onClick={() => handleOperator('add')}>+</button>
+          <button className="btn equals span-2-row" onClick={calculate} disabled={isLoading}>=</button>
 
           <button className="btn span-2-col" onClick={() => inputDigit('0')}>0</button>
           <button className="btn" onClick={inputDecimal}>.</button>
-          <button className="btn equals" onClick={calculate} disabled={isLoading}>=</button>
         </div>
       </div>
     </div>

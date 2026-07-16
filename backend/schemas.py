@@ -7,11 +7,14 @@ class Operation(str, Enum):
     subtract = "subtract"
     multiply = "multiply"
     divide = "divide"
+    power = "power"
+    sqrt = "sqrt"
+    percentage = "percentage"
 
 class CalculateRequest(BaseModel):
     operation: Operation
     a: Decimal
-    b: Decimal
+    b: Decimal = Decimal('0')
 
 class CalculateResponse(BaseModel):
     result: Decimal

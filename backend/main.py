@@ -31,10 +31,16 @@ def calculate(request: CalculateRequest):
             result = calculator.multiply(request.a, request.b)
         elif request.operation == Operation.divide:
             result = calculator.divide(request.a, request.b)
+        elif request.operation == Operation.power:
+            result = calculator.power(request.a, request.b)
+        elif request.operation == Operation.sqrt:
+            result = calculator.sqrt(request.a)
+        elif request.operation == Operation.percentage:
+            result = calculator.percentage(request.a)
         else:
             # Should not be reached due to Pydantic Enum validation
             raise ValueError(f"Unknown operation: {request.operation}")
-            
+
         return CalculateResponse(result=result)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
