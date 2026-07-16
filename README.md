@@ -65,6 +65,5 @@ The backend exposes a single RESTful endpoint for calculations, expecting strict
 3.  **Lean Frontend:** To prioritize maintainability and avoid infrastructure bloat, the frontend avoids heavy state management libraries (like Redux) or complex data fetching tools (like React Query or Axios). Native `useState` and `fetch` were used to deliver a functional MVP quickly.
 
 ## Future Optimizations
-* Implement advanced operations (Square Root, Exponentiation, Percentages).
 * Add comprehensive visual calculation history.
 * Refine the state machine to allow seamless multi-operator chaining before equality (e.g., `2 + 3 * 4`).

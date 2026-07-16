@@ -155,8 +155,30 @@ function App() {
     setWaitingForNewValue(true);
   };
 
-const calculateImmediate = async (op: UnaryOperation) => {
-    // Guard: Prevent negative square root network spam
+  const executeCalculation = async (payload: CalculateRequest): Promise<string> => {
+    const response = await fetch('http://localhost:8000/api/calculate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      let errorMessage = 'Calculation failed';
+      try {
+        const errorData: ErrorResponse = await response.json();
+        errorMessage = errorData.detail || errorMessage;
+      } catch {
+        errorMessage = `Server Error: ${response.status} ${response.statusText}`;
+      }
+      throw new Error(errorMessage);
+    }
+
+    const data: CalculateResponse = await response.json();
+    return String(data.result);
+  };
+
+  const calculateImmediate = async (op: UnaryOperation) => {
+    if (error || isLoading) return;
     if (op === 'sqrt' && parseFloat(display) < 0) {
       setError("Cannot calculate square root of a negative number");
       return;
@@ -165,43 +187,12 @@ const calculateImmediate = async (op: UnaryOperation) => {
     setIsLoading(true);
     setError(null);
 
-    // b is required by schema, but backend math ignores it for unary operations
-    const payload: CalculateRequest = {
-      operation: op,
-      a: display,
-      b: "0"
-    };
-
     try {
-      const response = await fetch('http://localhost:8000/api/calculate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
+      const resultStr = await executeCalculation({ operation: op, a: display, b: "0" });
 
-      if (!response.ok) {
-        let errorMessage = 'Calculation failed';
-        try {
-          const errorData: ErrorResponse = await response.json();
-          errorMessage = errorData.detail || errorMessage;
-        } catch {
-          errorMessage = `Server Error: ${response.status} ${response.statusText}`;
-        }
-        throw new Error(errorMessage);
-      }
-
-      const data: CalculateResponse = await response.json();
-
-      if (op === 'sqrt') {
-         setHistoryDisplay(`√${display} =`);
-      } else {
-         setHistoryDisplay(`${display}% =`);
-      }
-
-      setDisplay(String(data.result));
-      setFirstOperand(String(data.result));
+      setHistoryDisplay(op === 'sqrt' ? `√${display} =` : `${display}% =`);
+      setDisplay(resultStr);
+      setFirstOperand(resultStr);
       setOperator(null);
       setWaitingForNewValue(true);
       setIsCalculated(true);
@@ -213,49 +204,21 @@ const calculateImmediate = async (op: UnaryOperation) => {
   };
 
   const calculate = async () => {
-    if (firstOperand === null || operator === null || waitingForNewValue) {
-      return;
-    }
-
+    if (error || firstOperand === null || operator === null || waitingForNewValue) return;
     if (operator === 'divide' && parseFloat(display) === 0) {
       setError("Cannot divide by zero");
       return;
     }
 
-    const payload: CalculateRequest = {
-      operation: operator,
-      a: firstOperand,
-      b: display
-    };
-
     setIsLoading(true);
     setError(null);
 
     try {
-      const response = await fetch('http://localhost:8000/api/calculate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (!response.ok) {
-        let errorMessage = 'Calculation failed';
-        try {
-          const errorData: ErrorResponse = await response.json();
-          errorMessage = errorData.detail || errorMessage;
-        } catch {
-          errorMessage = `Server Error: ${response.status} ${response.statusText}`;
-        }
-        throw new Error(errorMessage);
-      }
-
-      const data: CalculateResponse = await response.json();
+      const resultStr = await executeCalculation({ operation: operator, a: firstOperand, b: display });
 
       setHistoryDisplay(`${firstOperand} ${getOperatorSymbol(operator)} ${display} =`);
-      setDisplay(String(data.result));
-      setFirstOperand(String(data.result));
+      setDisplay(resultStr);
+      setFirstOperand(resultStr);
       setOperator(null);
       setWaitingForNewValue(true);
       setIsCalculated(true);
