@@ -8,11 +8,24 @@ A fullstack calculator application featuring a clean, responsive React frontend 
 
 ## Setup & Installation
 
-### Backend (FastAPI)
+### Option 1: Docker Compose (Recommended)
+The entire full-stack application can be spun up using a single command. This utilizes a multi-stage build for the React frontend (served via Nginx) and a lightweight Python container for the backend.
+
+1. Ensure Docker and Docker Compose are installed.
+2. From the project root, run:
+   ```bash
+   docker compose up --build -d
+   ```
+3. The frontend UI will be available at `http://localhost:3000`
+4. The backend API will be available at `http://localhost:8000` and API documentation is available at `http://localhost:8000/docs`
+
+### Option 2: Manual Local Setup
+
+**Backend (FastAPI)**
 The backend uses standard Python with `uv` for dependency management.
 
 1. Ensure you are in the project root directory.
-2. Install dependencies (assuming you have `uv` installed):
+2. Install dependencies:
    ```bash
    uv pip install -r pyproject.toml
    ```
@@ -24,20 +37,17 @@ The backend uses standard Python with `uv` for dependency management.
 
    *Swagger API documentation is available at `http://127.0.0.1:8000/docs`*
 
-### Frontend (React/Vite)
+**Frontend (React/Vite)**
 1. Navigate to the frontend directory:
    ```bash
    cd frontend
    ```
-2. Install dependencies:
+2. Install dependencies and start the Vite development server:
    ```bash
    npm install
-   ```
-3. Start the Vite development server:
-   ```bash
    npm run dev
    ```
-   *The UI will be available at `http://localhost:5173`*
+   *The local dev UI will be available at `http://localhost:5173`*
 
 ## Testing & Coverage
 
