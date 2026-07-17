@@ -29,11 +29,11 @@ def test_divide_by_zero():
     assert response.json() == {"detail": "Cannot divide by zero"}
 
 def test_invalid_operation():
-    response = client.post("/api/calculate", json={"operation": "power", "a": 5, "b": 3})
+    response = client.post("/api/calculate", json={"operation": "modulus", "a": 5, "b": 3})
     assert response.status_code == 422 # Pydantic validation error
 
 def test_missing_field():
-    response = client.post("/api/calculate", json={"operation": "add", "a": 5})
+    response = client.post("/api/calculate", json={"operation": "add", "b": 5})
     assert response.status_code == 422 # Pydantic validation error
 
 def test_decimal_precision():
