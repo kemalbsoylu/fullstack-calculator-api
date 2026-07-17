@@ -40,3 +40,35 @@ def test_decimal_precision():
     response = client.post("/api/calculate", json={"operation": "add", "a": 0.1, "b": 0.2})
     assert response.status_code == 200
     assert response.json() == {"result": "0.3"}
+
+def test_power():
+    response = client.post("/api/calculate", json={"operation": "power", "a": 2, "b": 3})
+    assert response.status_code == 200
+    assert response.json() == {"result": "8"}
+
+def test_sqrt():
+    response = client.post("/api/calculate", json={"operation": "sqrt", "a": 16})
+    assert response.status_code == 200
+    assert response.json() == {"result": "4"}
+
+def test_percentage():
+    response = client.post("/api/calculate", json={"operation": "percentage", "a": 50})
+    assert response.status_code == 200
+    assert response.json() == {"result": "0.5"}
+
+def test_power_overflow():
+    # An excessively large exponent to trigger decimal.Overflow
+    response = client.post("/api/calculate", json={"operation": "power", "a": 9, "b": 999999999})
+    assert response.status_code == 400
+    assert "Result too large or mathematically invalid" in response.json()["detail"]
+
+def test_sqrt_negative():
+    response = client.post("/api/calculate", json={"operation": "sqrt", "a": -9})
+    assert response.status_code == 400
+    assert "Cannot calculate square root of a negative number" in response.json()["detail"]
+
+def test_unary_operation_missing_b():
+    # b field should default to 0 and work correctly without being in the payload
+    response = client.post("/api/calculate", json={"operation": "sqrt", "a": 25})
+    assert response.status_code == 200
+    assert response.json() == {"result": "5"}
