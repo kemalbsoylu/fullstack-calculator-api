@@ -4,7 +4,7 @@ A fullstack calculator application featuring a clean, responsive React frontend 
 
 ## Tech Stack
 * **Backend:** Python 3.12, FastAPI, Pydantic, Pytest. Managed with `uv`.
-* **Frontend:** React, TypeScript, Vite. Native CSS without external UI libraries.
+* **Frontend:** React, TypeScript, Vite, Vitest. Native CSS without external UI libraries.
 
 ## Setup & Installation
 
@@ -25,7 +25,10 @@ The backend uses standard Python with `uv` for dependency management.
    *Swagger API documentation is available at `http://127.0.0.1:8000/docs`*
 
 ### Frontend (React/Vite)
-1. Navigate to the frontend directory.
+1. Navigate to the frontend directory:
+   ```bash
+   cd frontend
+   ```
 2. Install dependencies:
    ```bash
    npm install
@@ -36,6 +39,26 @@ The backend uses standard Python with `uv` for dependency management.
    ```
    *The UI will be available at `http://localhost:5173`*
 
+## Testing & Coverage
+
+Both layers feature comprehensive unit testing with coverage reporting.
+
+### Backend Tests (pytest)
+From the project root directory, run the test suite and view the coverage report:
+```bash
+uv run pytest --cov=backend --cov-report=term-missing
+```
+
+### Frontend Tests (Vitest)
+From the `frontend` directory, run the test suite:
+```bash
+npm run test
+```
+To generate the coverage report:
+```bash
+npm run coverage
+```
+
 ## API Usage Examples
 
 The backend exposes a single RESTful endpoint for calculations, expecting strict typing via Pydantic.
@@ -43,7 +66,7 @@ The backend exposes a single RESTful endpoint for calculations, expecting strict
 **POST `/api/calculate`**
 
 ```json
-// Request
+// Request (Binary Operation)
 {
   "operation": "add",
   "a": "15.5",
@@ -56,13 +79,14 @@ The backend exposes a single RESTful endpoint for calculations, expecting strict
 }
 ```
 
-*Note: Operands are passed as strings to ensure floating-point precision is maintained when parsed by the backend.*
+*Note: Operands are passed as strings to ensure floating-point precision is maintained when parsed by the backend. For unary operations like `sqrt` or `percentage`, the `b` parameter can be omitted or sent as `"0"`.*
 
-## Design Decisions & Architecture
+## Design Decisions & Assumptions
 
-1.  **Precision over Speed:** Standard floating-point math often introduces subtle inaccuracies (e.g., `0.1 + 0.2 = 0.30000000000000004`). To prevent this, the Python backend casts all incoming string operands to `Decimal` before performing any arithmetic, ensuring absolute correctness.
-2.  **Stateless API:** The backend handles no state. The React frontend is entirely responsible for managing the calculator's state machine, tracking the first operand, the operator, and handling the transition into a finalized state.
-3.  **Lean Frontend:** To prioritize maintainability and avoid infrastructure bloat, the frontend avoids heavy state management libraries (like Redux) or complex data fetching tools (like React Query or Axios). Native `useState` and `fetch` were used to deliver a functional MVP quickly.
+1. **Language Selection:** Python and FastAPI were chosen to prioritize shipping a highly testable, functional MVP. Furthermore, Python's native `decimal` module provided a robust, built-in solution for the precision floating-point arithmetic required by a calculator without needing to implement custom math libraries.
+2. **Precision over Speed:** Standard floating-point math often introduces subtle inaccuracies (e.g., `0.1 + 0.2 = 0.30000000000000004`). To prevent this, the Python backend casts all incoming string operands to `Decimal` before performing any arithmetic, ensuring absolute correctness.
+3. **Stateless API:** The backend handles no state. The React frontend is entirely responsible for managing the calculator's state machine, tracking the first operand, the operator, and handling the transition into a finalized state.
+4. **Lean Frontend Architecture:** To prioritize maintainability and avoid infrastructure bloat, the frontend avoids heavy state management libraries (like Redux) or complex data fetching tools (like React Query or Axios). Native `useState` and `fetch` were used to deliver the UI quickly. The responsive grid design relies on native CSS `max-width` properties to ensure mobile support without importing UI component frameworks.
 
 ## Future Optimizations
 * Add comprehensive visual calculation history.
