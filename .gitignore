@@ -21,3 +21,6 @@ __pycache__/
 # Logs & Secrets
 *.log
 .env
+
+# Test
+coverage/
